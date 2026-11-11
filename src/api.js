@@ -29,9 +29,8 @@ export function fetchChart(code, period, count = 120) {
   return p;
 }
 
-// 마우스를 올렸을 때 미리 받아 둔다 (최근에 받았으면 생략). 60분봉은 무거워서 미리 받지 않는다.
+// 마우스를 올렸을 때 미리 받아 둔다 (최근에 받았으면 생략). 서버가 같은 요청을 하나로 합치므로 중복 호출은 없다.
 export function prefetchChart(code, period = 'D') {
-  if (period === '60') return;
   const hit = chartCache.get(`${code}|${period}`);
   if (hit && Date.now() - hit.at < PREFETCH_FRESH_MS) return;
   fetchChart(code, period).catch(() => {});
