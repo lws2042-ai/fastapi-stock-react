@@ -141,7 +141,35 @@ th {
 td { text-align: right; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; }
 
+/* 상단 도구 줄 (시장 선택, 실시간, 검색 / 뒤로가기) */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.toolbar .seg { margin-bottom: 0; }
+.toolbar .search { margin-bottom: 0; }
+.grow { flex: 1; }
+.small { font-size: 12px; }
+.live-btn { margin-left: 0; border: 1px solid var(--line); background: var(--card); padding: 5px 12px; border-radius: 999px; }
+.back {
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+  padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600;
+}
+.stock-name { color: var(--text); font-size: 16px; }
+
+/* 메인 순위 */
+.boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.boards > .card { min-width: 0; }
+@media (max-width: 900px) { .boards { grid-template-columns: minmax(0, 1fr); } }
+.board-note { margin: -6px 0 10px; }
+table.rank { font-size: 14px; }
+table.rank tbody tr { cursor: pointer; }
+table.rank tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+table.rank td.nm { font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+table.rank th:nth-child(2) { text-align: left; }
+table.rank td.flash { animation: flash 1s; }
+@keyframes flash { from { background: color-mix(in srgb, #f59f00 35%, transparent); } }
+
 @media (max-width: 600px) {
   .summary dl { gap: 16px; }
   .tooltip { display: none; }
+  .toolbar .search { width: 100%; }
+  .toolbar .search input { max-width: none; }
 }
