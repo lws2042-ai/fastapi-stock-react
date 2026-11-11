@@ -5,11 +5,14 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // FastAPI(localhost:8000)에 CORS 설정이 없으므로 개발 서버 프록시로 연결
+    // FastAPI(localhost:8000)로 REST와 WebSocket을 함께 넘긴다
+    //   /api/stocks/005930/chart   → http://localhost:8000/stocks/005930/chart
+    //   /api/ws/stocks/005930      → ws://localhost:8000/ws/stocks/005930
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        ws: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

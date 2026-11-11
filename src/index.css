@@ -70,6 +70,47 @@ button { font: inherit; cursor: pointer; }
 .up { color: var(--up); }
 .down { color: var(--down); }
 
+.muted { color: var(--muted); }
+.note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+.grid > .card { min-width: 0; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.live { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; font-size: 12px; color: var(--muted); }
+.live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.live.on { color: var(--up); }
+.live.on .dot { background: var(--up); animation: blink 1.2s infinite; }
+.live.warn .dot { background: #f59f00; }
+@keyframes blink { 50% { opacity: 0.25; } }
+
+.chart-wrap { position: relative; }
+.stock-chart { position: relative; }
+.chart-box { height: 520px; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; min-height: 18px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.chart-sub-legend { position: absolute; left: 4px; top: 0; z-index: 2; font-size: 11px; color: var(--muted); pointer-events: none; }
+.overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3;
+  background: color-mix(in srgb, var(--card) 70%, transparent); color: var(--muted); font-size: 14px;
+}
+
+table.book { font-size: 13px; }
+table.book th { text-align: center; }
+table.book td { padding: 4px 6px; text-align: center; }
+table.book td.qty { position: relative; width: 36%; }
+table.book td.qty i { position: absolute; top: 3px; bottom: 3px; opacity: 0.18; }
+table.book tr.ask td.qty i { right: 0; background: var(--down); }
+table.book tr.bid td.qty i { left: 0; background: var(--up); }
+table.book td.qty b { position: relative; font-weight: 400; }
+table.book tr.ask td.p { background: color-mix(in srgb, var(--down) 6%, transparent); }
+table.book tr.bid td.p { background: color-mix(in srgb, var(--up) 6%, transparent); }
+table.book tr.cur td.p { outline: 2px solid var(--text); outline-offset: -2px; font-weight: 700; }
+table.book tfoot td { border-bottom: 0; color: var(--muted); padding-top: 8px; }
+
+.trades { max-height: 420px; overflow: auto; }
+.trades table { font-size: 13px; }
+
 .chart { position: relative; }
 .chart svg { width: 100%; height: auto; display: block; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }

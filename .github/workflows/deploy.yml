@@ -1,0 +1,82 @@
+name: Deploy web to EC2
+
+# master/main 에 push 하면 React를 빌드해서 EC2 nginx 폴더(/var/www/fastapi-stock-react)로 올린다.
+# API 서버는 fastapi-stock 저장소의 워크플로가 배포한다.
+#
+# 필요한 저장소 secrets (Settings → Secrets and variables → Actions)
+#   EC2_HOST     서버 IP 또는 도메인
+#   EC2_USER     ubuntu
+#   EC2_SSH_KEY  .pem 키 파일 전체 내용
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:  # Actions 탭에서 수동 배포
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: 빌드
+        run: npm run build
+
+      - name: SSH 준비
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_SSH_KEY" ]; then
+            echo "::error::저장소 secrets(EC2_HOST, EC2_SSH_KEY)가 없습니다. Settings → Secrets and variables → Actions 에 등록하세요."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -T 15 -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: EC2에 업로드
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          # 새 폴더에 풀고 한 번에 교체 → 업로드 도중 화면이 깨지지 않는다
+          tar -C dist -czf - . | ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 "${EC2_USER:-ubuntu}@$EC2_HOST" '
+            set -e
+            D=/var/www/fastapi-stock-react
+            sudo rm -rf "$D.new" "$D.old"
+            sudo mkdir -p "$D.new" && sudo chown "$USER" "$D.new"
+            tar -C "$D.new" -xzf -
+            [ -d "$D" ] && sudo mv "$D" "$D.old"
+            sudo mv "$D.new" "$D"
+            sudo rm -rf "$D.old"
+            echo "uploaded: $(ls "$D" | tr "\n" " ")"'
+
+      - name: 외부 접속 확인
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://$EC2_HOST/") || true
+            echo "HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 3
+          done
+          exit 1
