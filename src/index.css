@@ -77,6 +77,14 @@ button { font: inherit; cursor: pointer; }
 .chart .vol { fill: var(--muted); opacity: 0.35; }
 .chart .vol.on { opacity: 0.8; }
 .chart .cross { stroke: var(--muted); stroke-dasharray: 3 3; }
+.chart .osc { opacity: 0.55; }
+.chart .osc.on { opacity: 1; }
+.chart .osc.pos { fill: var(--up); }
+.chart .osc.neg { fill: var(--down); }
+.chart .macd-line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.chart .signal-line { fill: none; stroke: #f59f00; stroke-width: 1.5; }
+.chart .legend-macd { fill: var(--accent); }
+.chart .legend-signal { fill: #f59f00; }
 .tooltip {
   position: absolute; top: 4px; transform: translateX(-50%);
   background: var(--text); color: var(--card); border-radius: 8px; padding: 8px 10px;
