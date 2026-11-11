@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchRanking } from './api.js';
-import { NAMES } from './names.js';
+import { fetchRanking, prefetchChart } from './api.js';
+import { NAMES, QUOTES } from './names.js';
 
 const REFRESH_MS = 5_000; // 서버가 5초 캐시하므로 그보다 자주 부를 필요 없다
 
@@ -56,7 +56,12 @@ function Board({ board, rows, error, onSelect, flashed }) {
               rows.map((r) => {
                 const cls = signClass(r.sign);
                 return (
-                  <tr key={r.code} onClick={() => onSelect(r.code, r.name)}>
+                  <tr
+                    key={r.code}
+                    onClick={() => onSelect(r.code, r.name)}
+                    onPointerEnter={() => prefetchChart(r.code)}
+                    onTouchStart={() => prefetchChart(r.code)}
+                  >
                     <td className="muted">{r.rank}</td>
                     <td className="nm" title={`${r.name} (${r.code})`}>{r.name}</td>
                     <td className={`${cls}${flashed.has(`${board.kind}:${r.code}`) ? ' flash' : ''}`}>{fmt(r.price)}</td>
@@ -73,7 +78,7 @@ function Board({ board, rows, error, onSelect, flashed }) {
   );
 }
 
-export default function Home({ onSelect }) {
+export default function Home({ onSelect, active = true }) {
   const [market, setMarket] = useState('kospi');
   const [live, setLive] = useState(true);
   const [state, setState] = useState({ market: null, rows: {}, errors: {}, at: null });
@@ -97,6 +102,7 @@ export default function Home({ onSelect }) {
             rows[kind] = res.value;
             res.value.forEach((r) => {
               NAMES.set(r.code, r.name);
+              QUOTES.set(r.code, r);
               const key = `${kind}:${r.code}`;
               const before = prices.current.get(key);
               if (before != null && before !== r.price) changed.add(key);
@@ -110,6 +116,8 @@ export default function Home({ onSelect }) {
       });
       setFlashed(changed);
     };
+    // 상세 화면을 보는 동안(active=false)에는 순위를 새로 받지 않는다
+    if (!active) return () => { alive = false; };
     load();
     if (!live) return () => { alive = false; };
     const id = setInterval(() => !document.hidden && load(), REFRESH_MS);
@@ -117,7 +125,7 @@ export default function Home({ onSelect }) {
       alive = false;
       clearInterval(id);
     };
-  }, [market, live]);
+  }, [market, live, active]);
 
   const onSubmit = (e) => {
     e.preventDefault();

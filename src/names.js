@@ -6,3 +6,6 @@ export const NAMES = new Map([
   ['035720', '카카오'],
   ['005380', '현대차'],
 ]);
+
+// 종목코드 → 순위 목록에서 마지막으로 본 시세. 상세 화면이 실시간 연결되기 전까지 먼저 보여준다.
+export const QUOTES = new Map();

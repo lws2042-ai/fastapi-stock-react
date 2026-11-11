@@ -27,8 +27,15 @@ function App() {
     location.hash = '#/';
   };
 
-  if (code) return <StockDetail key={code} code={code} onBack={back} onSelect={open} />;
-  return <Home onSelect={open} />;
+  // 메인 화면은 지우지 않고 숨겨 둔다 → 상세에서 돌아오면 바로 보이고 표가 다시 로딩되지 않는다
+  return (
+    <>
+      <div hidden={!!code}>
+        <Home onSelect={open} active={!code} />
+      </div>
+      {code && <StockDetail key={code} code={code} onBack={back} onSelect={open} />}
+    </>
+  );
 }
 
 export default App;

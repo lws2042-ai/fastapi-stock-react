@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchChart } from './api.js';
-import { NAMES } from './names.js';
+import { fetchChart, peekChart, prefetchChart } from './api.js';
+import { NAMES, QUOTES } from './names.js';
 import OrderBook from './OrderBook.jsx';
 import StockChart from './StockChart.jsx';
 import Trades from './Trades.jsx';
@@ -34,8 +34,10 @@ export default function StockDetail({ code, onBack, onSelect }) {
   const [formError, setFormError] = useState('');
 
   const baseKey = `${code}|${period}`;
-  const loading = result.key !== baseKey;
-  const data = loading ? null : result.data;
+  // 받아 둔 차트가 있으면 바로 보여주고, 새 데이터는 뒤에서 받아 바꿔 끼운다
+  const cached = result.key === baseKey ? null : peekChart(code, period);
+  const data = result.key === baseKey ? result.data : cached;
+  const loading = result.key !== baseKey && !cached;
 
   const rt = useRealtime(code);
 
@@ -69,7 +71,9 @@ export default function StockDetail({ code, onBack, onSelect }) {
     else onSelect(c);
   };
 
-  const tick = rt.tick;
+  // 실시간 연결 전에는 순위 목록에서 본 시세를 먼저 보여준다
+  const q = QUOTES.get(code);
+  const tick = rt.tick ?? (q && { price: q.price, change: q.change, rate: q.change_rate, sign: q.sign, volume: q.volume, preview: true });
   const name = NAMES.get(code) ?? code;
   const status = STATUS[rt.status] ?? STATUS.connecting;
   const error = formError || result.error;
@@ -111,7 +115,7 @@ export default function StockDetail({ code, onBack, onSelect }) {
             <div className="price muted">-</div>
           )}
         </div>
-        {tick && (
+        {tick && !tick.preview && (
           <dl>
             <div><dt>시가</dt><dd>{fmt(tick.open)}</dd></div>
             <div><dt>고가</dt><dd className="up">{fmt(tick.high)}</dd></div>
@@ -128,14 +132,19 @@ export default function StockDetail({ code, onBack, onSelect }) {
             <h2>차트</h2>
             <div className="seg">
               {PERIODS.map((p) => (
-                <button key={p.value} className={p.value === period ? 'on' : ''} onClick={() => setPeriod(p.value)}>
+                <button
+                  key={p.value}
+                  className={p.value === period ? 'on' : ''}
+                  onClick={() => setPeriod(p.value)}
+                  onPointerEnter={() => prefetchChart(code, p.value)}
+                >
                   {p.label}
                 </button>
               ))}
             </div>
           </div>
           <div className="chart-wrap">
-            <StockChart data={data} period={period} tick={tick} resetKey={baseKey} />
+            <StockChart data={data} period={period} tick={rt.tick} resetKey={baseKey} />
             {loading && (
               <div className="overlay">{period === '60' ? '불러오는 중… (60분봉은 첫 조회에 10초쯤 걸립니다)' : '불러오는 중…'}</div>
             )}
