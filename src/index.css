@@ -87,7 +87,7 @@ button { font: inherit; cursor: pointer; }
 
 .chart-wrap { position: relative; }
 .stock-chart { position: relative; }
-.chart-box { height: 520px; }
+.chart-box { height: 600px; } /* 가격 + MACD + OBV + 거래량 */
 .chart-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; min-height: 18px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .chart-sub-legend { position: absolute; left: 4px; top: 0; z-index: 2; font-size: 11px; color: var(--muted); pointer-events: none; }
 .overlay {

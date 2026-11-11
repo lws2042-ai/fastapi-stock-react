@@ -14,18 +14,21 @@ const MA = [
   { key: 'ma60', label: 'MA60', color: '#8b5cf6', width: 1 },
 ];
 const SIG_COLOR = '#f59f00';
-const SIG_TEXT = { MACD: 'MACD', RSI: 'RSI', STOCH: 'Stoch', MA: '이평' };
+const OBV_COLOR = '#0ea5e9';
+const SIG_TEXT = { MACD: 'MACD', RSI: 'RSI', STOCH: 'Stoch', MA: '이평', OBV: 'OBV' };
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const fmt = (v) => (v == null ? '-' : Math.round(v).toLocaleString('ko-KR'));
 
 /**
  * 서버가 계산한 캔들·지표·신호를 그리고, 실시간 체결(tick)로 마지막 캔들만 갱신한다.
- * 패널: 가격(캔들+이평+신호) → MACD 오실레이터 → 거래량
+ * 패널: 가격(캔들+이평+신호) → MACD 오실레이터 → OBV → 거래량
+ * OBV 신호는 가격 패널이 복잡해지지 않도록 OBV 패널에만 표시한다.
  */
 export default function StockChart({ data, period, tick, resetKey }) {
   const boxRef = useRef(null);
   const subLegendRef = useRef(null);
+  const obvLegendRef = useRef(null);
   const api = useRef(null);
   const lastRef = useRef(null); // 마지막 캔들 (실시간 갱신 대상)
   const fittedKey = useRef(null);
@@ -64,20 +67,28 @@ export default function StockChart({ data, period, tick, resetKey }) {
     const macd = chart.addSeries(LineSeries, { color: cssVar('--text'), lineWidth: 1, priceLineVisible: false, lastValueVisible: false }, 1);
     const signal = chart.addSeries(LineSeries, { color: SIG_COLOR, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }, 1);
 
-    const volume = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceLineVisible: false }, 2);
+    const volFmt = { type: 'volume' };
+    const obv = chart.addSeries(LineSeries, { color: OBV_COLOR, lineWidth: 1.5, priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false }, 2);
+    const obvSignal = chart.addSeries(LineSeries, { color: SIG_COLOR, lineWidth: 1, priceFormat: volFmt, priceLineVisible: false, lastValueVisible: false }, 2);
+    const obvMarkers = createSeriesMarkers(obv, []);
 
-    // 패널 높이 비율: 가격 5 : MACD 1.6 : 거래량 1.2
+    const volume = chart.addSeries(HistogramSeries, { priceFormat: volFmt, priceLineVisible: false }, 3);
+
+    // 패널 높이 비율: 가격 5 : MACD 1.6 : OBV 1.4 : 거래량 1.2
     chart.panes()[0].setStretchFactor(5);
     chart.panes()[1].setStretchFactor(1.6);
-    chart.panes()[2].setStretchFactor(1.2);
+    chart.panes()[2].setStretchFactor(1.4);
+    chart.panes()[3].setStretchFactor(1.2);
 
-    // MACD 패널 제목을 실제 패널 위치에 붙인다
+    // 보조지표 패널 제목을 실제 패널 위치에 붙인다
     const placeLabel = () => {
-      const el = chart.panes()[1]?.getHTMLElement();
-      if (el && subLegendRef.current && boxRef.current) {
-        const top = el.getBoundingClientRect().top - boxRef.current.getBoundingClientRect().top;
-        subLegendRef.current.style.top = `${top + boxRef.current.offsetTop + 4}px`;
-      }
+      [[1, subLegendRef], [2, obvLegendRef]].forEach(([idx, ref]) => {
+        const el = chart.panes()[idx]?.getHTMLElement();
+        if (el && ref.current && boxRef.current) {
+          const top = el.getBoundingClientRect().top - boxRef.current.getBoundingClientRect().top;
+          ref.current.style.top = `${top + boxRef.current.offsetTop + 4}px`;
+        }
+      });
     };
     const raf = requestAnimationFrame(placeLabel);
 
@@ -86,7 +97,7 @@ export default function StockChart({ data, period, tick, resetKey }) {
       setHover(c ? { ...c, ma: mas.map((s) => p.seriesData.get(s)?.value), sigs: sigByTime.current.get(p.time) } : null);
     });
 
-    api.current = { chart, candle, mas, markers, osc, macd, signal, volume, up, down, placeLabel };
+    api.current = { chart, candle, mas, markers, osc, macd, signal, obv, obvSignal, obvMarkers, volume, up, down, placeLabel };
     return () => {
       cancelAnimationFrame(raf);
       chart.remove();
@@ -108,9 +119,21 @@ export default function StockChart({ data, period, tick, resetKey }) {
     a.osc.setData(ind.macd_osc.map((v, i) => (v == null ? { time: t[i] } : { time: t[i], value: v, color: (v >= 0 ? a.up : a.down) + '99' })));
     a.macd.setData(line(ind.macd));
     a.signal.setData(line(ind.macd_signal));
+    if (ind.obv) {
+      a.obv.setData(line(ind.obv));
+      a.obvSignal.setData(line(ind.obv_signal));
+    }
     a.volume.setData(candles.map((c, i) => ({ time: t[i], value: c.volume, color: volColor(c) })));
+    const toMarker = (s) => ({
+      time: t[s.index],
+      position: s.type === 'buy' ? 'belowBar' : 'aboveBar',
+      shape: s.type === 'buy' ? 'arrowUp' : 'arrowDown',
+      color: s.type === 'buy' ? a.up : a.down,
+      size: 0.8,
+    });
+    a.obvMarkers.setMarkers(signals.filter((s) => s.indicator === 'OBV').map(toMarker));
     a.markers.setMarkers(
-      signals.map((s) => ({
+      signals.filter((s) => s.indicator !== 'OBV').map((s) => ({
         time: t[s.index],
         position: s.type === 'buy' ? 'belowBar' : 'aboveBar',
         shape: s.type === 'buy' ? 'arrowUp' : 'arrowDown',
@@ -174,6 +197,9 @@ export default function StockChart({ data, period, tick, resetKey }) {
       <div ref={subLegendRef} className="chart-sub-legend">
         MACD Osc (12, 26, 9) <span style={{ color: 'var(--text)' }}>— MACD</span>{' '}
         <span style={{ color: SIG_COLOR }}>— Signal</span>
+      </div>
+      <div ref={obvLegendRef} className="chart-sub-legend">
+        <span style={{ color: OBV_COLOR }}>— OBV</span> <span style={{ color: SIG_COLOR }}>— Signal (9)</span>
       </div>
       <div ref={boxRef} className="chart-box" />
     </div>
